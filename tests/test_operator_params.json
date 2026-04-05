@@ -1,0 +1,16 @@
+{
+  "function_name": "LogResultFn",
+  "test_type": "operator_params",
+  "args": {},
+  "widget_params": {},
+  "prompt": "Log the processing result for the credit card statement. File: Estado_tc_nacional.xls (45056 bytes). Source: TC Scotiabank ending in 7598. Period: 2026-02-27 to 2026-03-25. Holder: L******* I. A*******. Parsed 45 transactions, 4 fees, 2 payments. Validation passed with no errors or warnings. Webhook delivered successfully with HTTP 201, created 45 records, 0 duplicates skipped, ingestion ID 12345.",
+  "event_type": "function_call",
+  "extra_params": {
+    "is_operator_params_test": true
+  },
+  "files": [],
+  "metadata": {
+    "description": "Realistic operator prompt describing full successful pipeline execution",
+    "expected_status": "success"
+  }
+}

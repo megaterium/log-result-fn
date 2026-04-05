@@ -3,29 +3,20 @@ function:
   runtime: python3.12
   handler: handler.lambda_handler
   description: |
-    Registra un resumen del procesamiento para auditoría/seguimiento: metadatos del archivo (nombre, hash/tamaño si disponible), periodo detectado, últimos 4 enmascarado, conteos (transacciones/fees/pagos), warnings/errores, clasificación de validación y resultado del webhook. No notifica al usuario.
-  timeout: 120
-  memory_size: 512
+    Logs a processing summary for audit and tracking.
+    Records file metadata, parsing counts, validation result, and webhook status.
+  timeout: 30
+  memory_size: 256
 
-  # Function type (optional - for categorization)
-  # Set to 'agent' if this function is an AI agent that can be selected as the organization's default agent
-  # Uncomment the line below for agent functions:
-  # type: agent
-
-  # Layers (built-in Chask layers)
   layers:
     - foundationMinimal
     - foundationApi
-  # Environment variables (optional)
-  # environment:
-  #   CUSTOM_VAR: your-value
 
-  # Function parameters (define your custom parameters here)
   parameters:
     required:
-      - name: action
+      - name: processing_summary
         type: string
-        description: Action to perform
+        description: JSON string with full processing context
 
     optional:
       - name: verbose
@@ -33,34 +24,11 @@ function:
         description: Enable verbose logging
         default: false
 
-  # Widget configuration (optional - for UI integration)
-  # Enable this to allow users to configure secrets and settings via the Chask UI
   widget:
     enabled: false
     type: dynamic_widget
     params: []
-      # Example widget parameters:
-      # - name: api_token
-      #   type: secret        # Stored securely in AWS Secrets Manager
-      #   required: true
-      #   description: API token for external service
-      #
-      # - name: api_url
-      #   type: string        # Plain text configuration
-      #   required: false
-      #   description: Custom API endpoint URL
-      #
-      # IMPORTANT: Parameter order matters if using resolve_positional()
-      # For robust parameter access, use the extract_widget_params() helper
-      # function in handler.py which handles both production and test formats
 
-  # Testing configuration (used by chask function test:suite)
-  # Declares what capabilities this function exercises so the CLI
-  # knows which of the 4 mandatory test types to require.
   testing:
-    handles_files: false      # Set true if this function reads files (file_uuid, file_uuids, attachment_file_uuids params)
-    produces_files: false     # Set true if this function writes/uploads files to session storage
-    # NOTE: widget testing is auto-detected from widget.enabled above.
-    #       handles_files is also heuristically detected from parameter names
-    #       (file_uuid, file_uuids, attachment*, *_file_*), but setting it
-    #       explicitly here is the source of truth.
+    handles_files: false
+    produces_files: false
