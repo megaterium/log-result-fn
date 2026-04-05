@@ -26,6 +26,7 @@ class FunctionBackend:
     def process_request(self) -> str:
         tool_args = self._extract_tool_args()
 
+        logger.info(f"Tool args received: {json.dumps(tool_args)}")
         raw_summary = tool_args.get("processing_summary")
         verbose = tool_args.get("verbose", False)
 
