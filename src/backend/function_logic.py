@@ -27,19 +27,22 @@ class FunctionBackend:
         tool_args = self._extract_tool_args()
 
         raw_summary = tool_args.get("processing_summary")
-        if not raw_summary:
-            raise ValueError("Missing required parameter: processing_summary")
-
         verbose = tool_args.get("verbose", False)
 
-        # Parse the JSON summary string
-        if isinstance(raw_summary, str):
-            try:
-                summary = json.loads(raw_summary)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in processing_summary: {e}")
+        if raw_summary:
+            # Standard path: processing_summary provided as JSON string or dict
+            if isinstance(raw_summary, str):
+                try:
+                    summary = json.loads(raw_summary)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Invalid JSON in processing_summary: {e}")
+            else:
+                summary = raw_summary
+        elif any(k in tool_args for k in ("file_name", "source", "counts", "validation", "webhook")):
+            # Fallback: LLM passed fields directly as individual args
+            summary = {k: v for k, v in tool_args.items() if k != "verbose"}
         else:
-            summary = raw_summary
+            raise ValueError("Missing required parameter: processing_summary")
 
         if verbose:
             logger.info(f"Received processing summary: {json.dumps(summary)}")
