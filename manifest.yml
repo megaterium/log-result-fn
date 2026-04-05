@@ -16,6 +16,15 @@ function:
     required: []
 
     optional:
+      - name: parsed_statement_file_uuid
+        type: string
+        description: UUID of parsed_statement.json from ParseStatementFn
+      - name: validation_result_file_uuid
+        type: string
+        description: UUID of validation_result.json from ValidateRulesFn
+      - name: webhook_result_file_uuid
+        type: string
+        description: UUID of webhook_result.json from SendWebhookFn
       - name: verbose
         type: boolean
         description: Enable verbose logging

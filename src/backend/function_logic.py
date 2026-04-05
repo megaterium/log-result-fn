@@ -29,10 +29,10 @@ class FunctionBackend:
         tool_args = self._extract_tool_args()
         verbose = tool_args.get("verbose", False)
 
-        # Download all result files from the session
-        statement = self._download_json_from_session_safe("parsed_statement.json")
-        validation = self._download_json_from_session_safe("validation_result.json")
-        webhook = self._download_json_from_session_safe("webhook_result.json")
+        # Download files by UUID (graceful if missing)
+        statement = self._download_json_by_uuid_safe(tool_args.get("parsed_statement_file_uuid"))
+        validation = self._download_json_by_uuid_safe(tool_args.get("validation_result_file_uuid"))
+        webhook = self._download_json_by_uuid_safe(tool_args.get("webhook_result_file_uuid"))
 
         if verbose:
             logger.info(f"Downloaded files - statement: {statement is not None}, validation: {validation is not None}, webhook: {webhook is not None}")
@@ -85,16 +85,18 @@ class FunctionBackend:
         logger.info(f"Pipeline execution log: {json.dumps(log_entry)}")
         return json.dumps(log_entry)
 
-    def _download_json_from_session_safe(self, filename: str) -> Optional[dict]:
-        """Download JSON file from session. Returns None if not found."""
+    def _download_json_by_uuid_safe(self, file_uuid: Optional[str]) -> Optional[dict]:
+        """Download JSON file by UUID. Returns None if UUID missing or file not found."""
+        if not file_uuid:
+            return None
         try:
-            return self._download_json_from_session(filename)
-        except (ValueError, Exception) as e:
-            logger.warning(f"Could not download {filename}: {e}")
+            return self._download_json_by_uuid(file_uuid)
+        except Exception as e:
+            logger.warning(f"Could not download file {file_uuid}: {e}")
             return None
 
-    def _download_json_from_session(self, filename: str) -> dict:
-        """Download a JSON file from the session by filename."""
+    def _download_json_by_uuid(self, file_uuid: str) -> dict:
+        """Download a JSON file from the session by file UUID."""
         session_uuid = self.orchestration_event.orchestration_session_uuid
         files_response = files_api_manager.call(
             "get_all_files_for_session",
@@ -103,9 +105,9 @@ class FunctionBackend:
             organization_id=self.orchestration_event.organization.organization_id,
         )
         files = files_response.get("files", [])
-        target = next((f for f in files if f.get("file_name") == filename), None)
+        target = next((f for f in files if f.get("file_uuid") == file_uuid), None)
         if not target:
-            raise ValueError(f"File '{filename}' not found in session")
+            raise ValueError(f"File UUID '{file_uuid}' not found in session {session_uuid}")
         with urllib.request.urlopen(target["file_url"]) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
