@@ -26,7 +26,10 @@ class FunctionBackend:
     def process_request(self) -> str:
         tool_args = self._extract_tool_args()
 
+        extra_params = self.orchestration_event.extra_params or {}
         logger.info(f"Tool args received: {json.dumps(tool_args)}")
+        logger.info(f"Extra params keys: {list(extra_params.keys())}")
+        logger.info(f"Prompt field: {self.orchestration_event.prompt[:200] if self.orchestration_event.prompt else 'None'}")
         raw_summary = tool_args.get("processing_summary")
         verbose = tool_args.get("verbose", False)
 
