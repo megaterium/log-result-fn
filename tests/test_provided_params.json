@@ -1,16 +1,14 @@
 {
   "function_name": "LogResultFn",
   "test_type": "provided_params",
-  "args": {
-    "processing_summary": "{\"file_name\":\"Estado_tc_nacional.xls\",\"file_size\":45056,\"source\":{\"name\":\"TC Scotiabank\",\"last_four_digits\":\"7598\",\"source_type\":\"credit_card\"},\"statement_period\":{\"start\":\"2026-02-27\",\"end\":\"2026-03-25\"},\"holder_masked\":\"L******* I. A*******\",\"counts\":{\"transactions\":45,\"fees\":4,\"payments\":2},\"validation\":{\"status\":\"ok\",\"errors\":[],\"warnings\":[]},\"webhook\":{\"sent\":true,\"http_status\":201,\"ingestion_id\":\"12345\",\"created\":45,\"skipped_duplicates\":0,\"error\":null}}"
-  },
+  "args": {},
   "widget_params": {},
   "prompt": "",
   "event_type": "function_call",
   "extra_params": {},
   "files": [],
   "metadata": {
-    "description": "Full success scenario - all steps completed without errors",
+    "description": "Full success scenario - downloads session files and builds log entry",
     "expected_status": "success"
   }
 }

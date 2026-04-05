@@ -3,14 +3,14 @@
   "test_type": "operator_params",
   "args": {},
   "widget_params": {},
-  "prompt": "Registra el resultado del pipeline. El archivo procesado fue Estado_tc_nacional.xls de TC Scotiabank terminada en 7598. Se parsearon 45 transacciones, 4 comisiones, 2 pagos. Periodo: 2026-02-27 a 2026-03-25. Titular: L******* I. A*******. Validación: ok, sin errores ni warnings. Webhook enviado exitosamente con HTTP 201, se crearon 45 registros, 0 duplicados. ID de ingestion: 12345.",
+  "prompt": "Registra el resultado del pipeline de procesamiento de estado de cuenta. Descarga los archivos de la sesión y genera el log de auditoría.",
   "event_type": "function_call",
   "extra_params": {
     "is_operator_params_test": true
   },
   "files": [],
   "metadata": {
-    "description": "Realistic operator prompt describing full successful pipeline execution",
+    "description": "Operator prompt for logging pipeline results from session files",
     "expected_status": "success"
   }
 }

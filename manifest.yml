@@ -13,10 +13,7 @@ function:
     - foundationApi
 
   parameters:
-    required:
-      - name: processing_summary
-        type: string
-        description: JSON string with full processing context
+    required: []
 
     optional:
       - name: verbose

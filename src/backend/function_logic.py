@@ -2,15 +2,17 @@
 ✏️ DEVELOPER CODE - LogResultFn Business Logic
 
 Logs a processing summary for audit and tracking.
-Records file metadata, parsing counts, validation result, and webhook status.
+Downloads result files from session, builds structured log entry.
 """
 
 import json
 import logging
+import urllib.request
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from chask_foundation.backend.models import OrchestrationEvent
 from api.orchestrator_requests import orchestrator_api_manager
+from api.files_requests import files_api_manager
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -25,110 +27,87 @@ class FunctionBackend:
 
     def process_request(self) -> str:
         tool_args = self._extract_tool_args()
-
-        raw_summary = tool_args.get("processing_summary")
         verbose = tool_args.get("verbose", False)
 
-        if raw_summary:
-            # Standard path: processing_summary provided as JSON string or dict
-            if isinstance(raw_summary, str):
-                try:
-                    summary = json.loads(raw_summary)
-                except json.JSONDecodeError as e:
-                    raise ValueError(f"Invalid JSON in processing_summary: {e}")
-            else:
-                summary = raw_summary
-        elif any(k in tool_args for k in ("file_name", "source", "counts", "validation", "webhook")):
-            # Fallback: LLM passed fields directly as individual args
-            summary = {k: v for k, v in tool_args.items() if k != "verbose"}
-        elif self.orchestration_event.prompt:
-            # Fallback: extract JSON from the prompt field (operator params path)
-            summary = self._extract_json_from_prompt(self.orchestration_event.prompt)
-        else:
-            raise ValueError("Missing required parameter: processing_summary")
+        # Download all result files from the session
+        statement = self._download_json_from_session_safe("parsed_statement.json")
+        validation = self._download_json_from_session_safe("validation_result.json")
+        webhook = self._download_json_from_session_safe("webhook_result.json")
 
         if verbose:
-            logger.info(f"Received processing summary: {json.dumps(summary)}")
+            logger.info(f"Downloaded files - statement: {statement is not None}, validation: {validation is not None}, webhook: {webhook is not None}")
 
-        log_entry = self._build_log_entry(summary)
+        # Build summary from downloaded files
+        source = statement.get("source", {}) if statement else {}
+        period = statement.get("statement_period", {}) if statement else {}
+        account = statement.get("account_info", {}) if statement else {}
 
-        # Log to CloudWatch
-        logger.info(f"Pipeline execution log: {json.dumps(log_entry)}")
+        n_txn = len(statement.get("transactions", [])) if statement else 0
+        n_fees = len(statement.get("fees", [])) if statement else 0
+        n_payments = len(statement.get("payments", [])) if statement else 0
 
-        return json.dumps(log_entry)
+        validation_status = validation.get("status", "unknown") if validation else "unknown"
+        validation_errors = validation.get("validation", {}).get("errors", []) if validation else []
+        validation_warnings = validation.get("validation", {}).get("warnings", []) if validation else []
 
-    def _build_log_entry(self, summary: Dict[str, Any]) -> Dict[str, Any]:
-        source_info = summary.get("source", {})
-        source_name = source_info.get("name", "Unknown")
-        last_four = source_info.get("last_four_digits", "????")
-        source_label = f"{source_name} (****{last_four})"
+        webhook_sent = webhook.get("webhook_sent", False) if webhook else False
+        webhook_http = webhook.get("http_status") if webhook else None
+        webhook_response = webhook.get("response", {}) if webhook else {}
+        webhook_error = webhook.get("error") if webhook else None
 
-        period = summary.get("statement_period", {})
-        period_start = period.get("start", "unknown")
-        period_end = period.get("end", "unknown")
-
-        counts = summary.get("counts", {})
-        transactions = counts.get("transactions", 0)
-        fees = counts.get("fees", 0)
-        payments = counts.get("payments", 0)
-
-        validation = summary.get("validation", {})
-        validation_status = validation.get("status", "unknown")
-
-        webhook = summary.get("webhook", {})
-        webhook_sent = webhook.get("sent", False)
-        webhook_http = webhook.get("http_status")
-        webhook_error = webhook.get("error")
-
-        overall_status = self._determine_overall_status(validation_status, webhook_sent, webhook_error)
+        overall = self._determine_overall_status(validation_status, webhook_sent, webhook_error)
 
         log_entry = {
             "log_type": "pipeline_execution",
             "pipeline_id": PIPELINE_ID,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "source": source_label,
-            "period": f"{period_start} to {period_end}",
-            "holder": summary.get("holder_masked", "unknown"),
+            "source": f"{source.get('name', 'Unknown')} (****{source.get('last_four_digits', '????')})",
+            "period": f"{period.get('start', '?')} to {period.get('end', '?')}",
+            "holder": account.get("holder_name", "unknown"),
             "summary": {
-                "transactions_parsed": transactions,
-                "fees_parsed": fees,
-                "payments_parsed": payments,
-                "total_entries": transactions + fees + payments,
+                "transactions_parsed": n_txn,
+                "fees_parsed": n_fees,
+                "payments_parsed": n_payments,
+                "total_entries": n_txn + n_fees + n_payments,
             },
             "validation_result": validation_status,
-            "validation_warnings": validation.get("warnings", []),
-            "validation_errors": validation.get("errors", []),
+            "validation_warnings": validation_warnings,
+            "validation_errors": validation_errors,
             "webhook_result": {
                 "delivered": webhook_sent,
                 "http_status": webhook_http,
-                "records_created": webhook.get("created", 0),
-                "duplicates_skipped": webhook.get("skipped_duplicates", 0),
+                "records_created": webhook_response.get("created", 0) if isinstance(webhook_response, dict) else 0,
+                "duplicates_skipped": webhook_response.get("skipped_duplicates", 0) if isinstance(webhook_response, dict) else 0,
             },
-            "overall_status": overall_status,
+            "overall_status": overall,
         }
 
-        return log_entry
+        logger.info(f"Pipeline execution log: {json.dumps(log_entry)}")
+        return json.dumps(log_entry)
 
-    def _extract_json_from_prompt(self, prompt: str) -> Dict[str, Any]:
-        """Try to find a JSON object in the prompt text, or parse structured text."""
-        import re
-        # Try to find a JSON object in the prompt
-        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', prompt)
-        if json_match:
-            try:
-                return json.loads(json_match.group())
-            except json.JSONDecodeError:
-                pass
-        # Build a minimal summary from natural language prompt
-        summary: Dict[str, Any] = {}
-        summary["source"] = {"name": "Unknown", "last_four_digits": "0000", "source_type": "credit_card"}
-        summary["counts"] = {"transactions": 0, "fees": 0, "payments": 0}
-        summary["validation"] = {"status": "ok", "errors": [], "warnings": []}
-        summary["webhook"] = {"sent": True, "http_status": 200, "created": 0, "skipped_duplicates": 0, "error": None}
-        summary["holder_masked"] = "Unknown"
-        summary["statement_period"] = {"start": "unknown", "end": "unknown"}
-        logger.info(f"Built minimal summary from prompt fallback")
-        return summary
+    def _download_json_from_session_safe(self, filename: str) -> Optional[dict]:
+        """Download JSON file from session. Returns None if not found."""
+        try:
+            return self._download_json_from_session(filename)
+        except (ValueError, Exception) as e:
+            logger.warning(f"Could not download {filename}: {e}")
+            return None
+
+    def _download_json_from_session(self, filename: str) -> dict:
+        """Download a JSON file from the session by filename."""
+        session_uuid = self.orchestration_event.orchestration_session_uuid
+        files_response = files_api_manager.call(
+            "get_all_files_for_session",
+            orchestration_session_uuid=session_uuid,
+            access_token=self.orchestration_event.access_token,
+            organization_id=self.orchestration_event.organization.organization_id,
+        )
+        files = files_response.get("files", [])
+        target = next((f for f in files if f.get("file_name") == filename), None)
+        if not target:
+            raise ValueError(f"File '{filename}' not found in session")
+        with urllib.request.urlopen(target["file_url"]) as resp:
+            return json.loads(resp.read().decode("utf-8"))
 
     def _determine_overall_status(self, validation_status: str, webhook_sent: bool, webhook_error) -> str:
         if validation_status == "rejected":
