@@ -3,7 +3,7 @@
   "test_type": "operator_params",
   "args": {},
   "widget_params": {},
-  "prompt": "Log the processing result for the credit card statement. File: Estado_tc_nacional.xls (45056 bytes). Source: TC Scotiabank ending in 7598. Period: 2026-02-27 to 2026-03-25. Holder: L******* I. A*******. Parsed 45 transactions, 4 fees, 2 payments. Validation passed with no errors or warnings. Webhook delivered successfully with HTTP 201, created 45 records, 0 duplicates skipped, ingestion ID 12345.",
+  "prompt": "Call LogResultFn with the processing_summary parameter. The processing_summary must be a JSON string containing: {\"file_name\": \"Estado_tc_nacional.xls\", \"file_size\": 45056, \"source\": {\"name\": \"TC Scotiabank\", \"last_four_digits\": \"7598\", \"source_type\": \"credit_card\"}, \"statement_period\": {\"start\": \"2026-02-27\", \"end\": \"2026-03-25\"}, \"holder_masked\": \"L******* I. A*******\", \"counts\": {\"transactions\": 45, \"fees\": 4, \"payments\": 2}, \"validation\": {\"status\": \"ok\", \"errors\": [], \"warnings\": []}, \"webhook\": {\"sent\": true, \"http_status\": 201, \"ingestion_id\": \"12345\", \"created\": 45, \"skipped_duplicates\": 0, \"error\": null}}",
   "event_type": "function_call",
   "extra_params": {
     "is_operator_params_test": true
