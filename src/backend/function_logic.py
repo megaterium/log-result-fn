@@ -30,9 +30,9 @@ class FunctionBackend:
         verbose = tool_args.get("verbose", False)
 
         # Download files by UUID (graceful if missing)
-        statement = self._download_json_by_uuid_safe(tool_args.get("parsed_statement_file_uuid"))
-        validation = self._download_json_by_uuid_safe(tool_args.get("validation_result_file_uuid"))
-        webhook = self._download_json_by_uuid_safe(tool_args.get("webhook_result_file_uuid"))
+        statement = self._download_json_by_uuid_safe(tool_args.get("statement_file_uuid"))
+        validation = self._download_json_by_uuid_safe(tool_args.get("validation_file_uuid"))
+        webhook = self._download_json_by_uuid_safe(tool_args.get("webhook_file_uuid"))
 
         if verbose:
             logger.info(f"Downloaded files - statement: {statement is not None}, validation: {validation is not None}, webhook: {webhook is not None}")
