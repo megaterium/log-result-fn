@@ -19,9 +19,9 @@ function:
       - name: statement_file_uuid
         type: string
         description: UUID of the parsed statement JSON file
-      - name: validation_file_uuid
+      - name: categorization_file_uuid
         type: string
-        description: UUID of the validation result JSON file
+        description: UUID of the categorized statement JSON file
       - name: webhook_file_uuid
         type: string
         description: UUID of the webhook result JSON file

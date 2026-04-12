@@ -31,11 +31,11 @@ class FunctionBackend:
 
         # Download files by UUID (graceful if missing)
         statement = self._download_json_by_uuid_safe(tool_args.get("statement_file_uuid"))
-        validation = self._download_json_by_uuid_safe(tool_args.get("validation_file_uuid"))
+        categorization = self._download_json_by_uuid_safe(tool_args.get("categorization_file_uuid"))
         webhook = self._download_json_by_uuid_safe(tool_args.get("webhook_file_uuid"))
 
         if verbose:
-            logger.info(f"Downloaded files - statement: {statement is not None}, validation: {validation is not None}, webhook: {webhook is not None}")
+            logger.info(f"Downloaded files - statement: {statement is not None}, categorization: {categorization is not None}, webhook: {webhook is not None}")
 
         # Build summary from downloaded files
         source = statement.get("source", {}) if statement else {}
@@ -46,16 +46,15 @@ class FunctionBackend:
         n_fees = len(statement.get("fees", [])) if statement else 0
         n_payments = len(statement.get("payments", [])) if statement else 0
 
-        validation_status = validation.get("status", "unknown") if validation else "unknown"
-        validation_errors = validation.get("validation", {}).get("errors", []) if validation else []
-        validation_warnings = validation.get("validation", {}).get("warnings", []) if validation else []
+        categories = categorization.get("conciliation", {}).get("categories_applied", []) if categorization else []
+        n_categorized = len(categories)
 
         webhook_sent = webhook.get("webhook_sent", False) if webhook else False
         webhook_http = webhook.get("http_status") if webhook else None
         webhook_response = webhook.get("response", {}) if webhook else {}
         webhook_error = webhook.get("error") if webhook else None
 
-        overall = self._determine_overall_status(validation_status, webhook_sent, webhook_error)
+        overall = self._determine_overall_status(webhook_sent, webhook_error)
 
         log_entry = {
             "log_type": "pipeline_execution",
@@ -70,9 +69,10 @@ class FunctionBackend:
                 "payments_parsed": n_payments,
                 "total_entries": n_txn + n_fees + n_payments,
             },
-            "validation_result": validation_status,
-            "validation_warnings": validation_warnings,
-            "validation_errors": validation_errors,
+            "categorization_result": {
+                "categories_applied": n_categorized,
+                "total_entries": n_txn + n_fees + n_payments,
+            },
             "webhook_result": {
                 "delivered": webhook_sent,
                 "http_status": webhook_http,
@@ -111,13 +111,9 @@ class FunctionBackend:
         with urllib.request.urlopen(target["file_url"]) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
-    def _determine_overall_status(self, validation_status: str, webhook_sent: bool, webhook_error) -> str:
-        if validation_status == "rejected":
-            return "rejected"
+    def _determine_overall_status(self, webhook_sent: bool, webhook_error) -> str:
         if not webhook_sent or webhook_error:
             return "failed"
-        if validation_status == "partial_with_warnings":
-            return "partial"
         return "success"
 
     def _extract_tool_args(self) -> Dict[str, Any]:
